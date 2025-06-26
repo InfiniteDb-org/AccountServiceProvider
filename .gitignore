@@ -1,0 +1,11 @@
+.idea/
+.vscode/
+*.user
+*.suo
+
+**/bin/
+**/obj/
+
+.DS_Store
+
+*.swp
