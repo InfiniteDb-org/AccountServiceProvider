@@ -13,28 +13,66 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
     private readonly ILogger<AccountFunctions> _logger = logger;
     private readonly IAccountService _accountService = accountService;
     
-    [Function("CreateAccount")]
-    public async Task<IActionResult> CreateAccount(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "accounts")] HttpRequest req)
+    [Function("StartRegistration")]
+    public async Task<IActionResult> StartRegistration(
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "accounts/start-registration")] HttpRequest req)
     {
         try
         {
-            var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<CreateAccountRequest>(req, _logger);
+            var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<StartRegistrationRequest>(req, _logger);
             if (!requestResult.Succeeded)
-            {
                 return ActionResultHelper.CreateResponse(requestResult);
-            }
 
-            var response = await _accountService.CreateAccountAsync(requestResult.Data!);
+            var response = await _accountService.StartRegistrationAsync(requestResult.Data!);
             return ActionResultHelper.CreateResponse(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating account");
+            _logger.LogError(ex, "Error in StartRegistration");
             return ActionResultHelper.BadRequest("Internal server error");
         }
     }
 
+    [Function("ConfirmEmailCode")]
+    public async Task<IActionResult> ConfirmEmailCode(
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "accounts/confirm-email-code")] HttpRequest req)
+    {
+        try
+        {
+            var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<ConfirmEmailCodeRequest>(req, _logger);
+            if (!requestResult.Succeeded)
+                return ActionResultHelper.CreateResponse(requestResult);
+
+            var response = await _accountService.ConfirmEmailCodeAsync(requestResult.Data!);
+            return ActionResultHelper.CreateResponse(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in ConfirmEmailCode");
+            return ActionResultHelper.BadRequest("Internal server error");
+        }
+    }
+
+    [Function("CompleteRegistration")]
+    public async Task<IActionResult> CompleteRegistration(
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "accounts/complete-registration")] HttpRequest req)
+    {
+        try
+        {
+            var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<CompleteRegistrationRequest>(req, _logger);
+            if (!requestResult.Succeeded)
+                return ActionResultHelper.CreateResponse(requestResult);
+
+            var response = await _accountService.CompleteRegistrationAsync(requestResult.Data!);
+            return ActionResultHelper.CreateResponse(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in CompleteRegistration");
+            return ActionResultHelper.BadRequest("Internal server error");
+        }
+    }
+    
     [Function("ValidateCredentials")]
     public async Task<IActionResult> ValidateCredentials(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "accounts/validate")] HttpRequest req)
@@ -87,29 +125,6 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting account by email");
-            return ActionResultHelper.BadRequest("Internal server error");
-        }
-    }
-
-    [Function("ConfirmEmail")]
-    public async Task<IActionResult> ConfirmEmail(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "accounts/{userId:guid}/confirm-email")] HttpRequest req,
-        Guid userId)
-    {
-        try
-        {
-            var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<ConfirmEmailRequest>(req, _logger);
-            if (!requestResult.Succeeded)
-            {
-                return ActionResultHelper.CreateResponse(requestResult);
-            }
-
-            var response = await _accountService.ConfirmEmailAsync(userId, requestResult.Data!);
-            return ActionResultHelper.CreateResponse(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error confirming email");
             return ActionResultHelper.BadRequest("Internal server error");
         }
     }
@@ -224,4 +239,5 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
             return ActionResultHelper.BadRequest("Internal server error");
         }
     }
+    
 }

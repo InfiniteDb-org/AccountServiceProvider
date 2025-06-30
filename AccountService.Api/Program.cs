@@ -13,12 +13,16 @@ builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
     .ConfigureFunctionsApplicationInsights();
 
-// Get Service Bus connection string from configuration
-var serviceBusConnectionString = builder.Configuration.GetConnectionString("ServiceBus") 
-                                 ?? throw new InvalidOperationException("ServiceBus connection string is not configured.");
+var serviceBusConnectionString = builder.Configuration.GetConnectionString("ASB_ConnectionString")
+                                 ?? throw new InvalidOperationException("ASB_ConnectionString is not configured.");
 
 // Register services from extensions
 builder.Services.AddServices(serviceBusConnectionString);
 builder.Services.AddRepositories(builder.Configuration);
 
-builder.Build().Run();
+var app = builder.Build();
+
+var envName = Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT");
+await app.Services.EnsureCosmosContainersCreatedAsync(envName);
+
+app.Run();

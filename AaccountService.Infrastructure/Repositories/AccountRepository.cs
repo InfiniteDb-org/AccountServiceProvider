@@ -61,22 +61,6 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
         return RepositoryResult<User>.Success(user, "User deleted");
     }
 
-    public async Task<RepositoryResult<User>> ValidateCredentialsAsync(string email, string password)
-    {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null)
-            return RepositoryResult<User>.Fail("User not found");
-        var valid = await Task.Run(() => Verify(password, user.PasswordHash));
-        return valid
-            ? RepositoryResult<User>.Success(user, "Credentials valid")
-            : RepositoryResult<User>.Fail("Invalid credentials");
-    }
-
-    public async Task<RepositoryResult<bool>> IsEmailConfirmedAsync(User user)
-    {
-        return RepositoryResult<bool>.Success(user.EmailConfirmed, user.EmailConfirmed ? "Email is confirmed" : "Email is not confirmed");
-    }
-
     public async Task<RepositoryResult<bool>> ConfirmEmailAsync(User user, string token)
     {
         var codeResult = await GetSavedVerificationCodeAsync(user);
@@ -93,11 +77,23 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
     {
         try
         {
-            var oldCodes = _dbContext.EmailVerificationCodes.Where(x => x.UserId == user.Id);
+            var oldCodes = await _dbContext.EmailVerificationCodes
+                .Where(x => x.UserId == user.Id)
+                .ToListAsync();
+            
             _dbContext.EmailVerificationCodes.RemoveRange(oldCodes);
-            var entity = new EmailVerificationCode { Id = Guid.NewGuid(), UserId = user.Id, Code = code, CreatedAt = DateTime.UtcNow };
+        
+            var entity = new EmailVerificationCode 
+            { 
+                Id = Guid.NewGuid(), 
+                UserId = user.Id, 
+                Code = code, 
+                CreatedAt = DateTime.UtcNow 
+            };
+        
             _dbContext.EmailVerificationCodes.Add(entity);
             await _dbContext.SaveChangesAsync();
+        
             return RepositoryResult<bool>.Success(true, "Verification code saved");
         }
         catch (Exception ex)
@@ -119,16 +115,16 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
         }
     }
 
-    public async Task<RepositoryResult<string>> GeneratePasswordResetTokenAsync(User user)
+    public Task<RepositoryResult<string>> GeneratePasswordResetTokenAsync(User user)
     {
         try
         {
             var token = Guid.NewGuid().ToString();
-            return RepositoryResult<string>.Success(token, "Password reset token generated");
+            return Task.FromResult(RepositoryResult<string>.Success(token, "Password reset token generated"));
         }
         catch (Exception ex)
         {
-            return RepositoryResult<string>.Fail(ex.Message);
+            return Task.FromResult(RepositoryResult<string>.Fail(ex.Message));
         }
     }
 

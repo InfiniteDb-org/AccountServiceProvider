@@ -1,4 +1,4 @@
-using AccountService.Contracts.Events;
+using AccountService.Contracts.Requests;
 using Application.Interfaces;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
@@ -6,63 +6,44 @@ using Newtonsoft.Json;
 
 namespace Infrastructure.Messaging;
 
-public class EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPublisher> logger) : IEventPublisher
+public class EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPublisher> logger) : IEventPublisher, IAsyncDisposable
 {
-    private readonly ILogger<EventPublisher> _logger = logger;
-    private const string QueueName = "account-events";
+    private const string QueueName = "email-verification";
     private readonly ServiceBusSender _sender = serviceBusClient.CreateSender(QueueName);
-
-    private async Task PublishEventAsync(AccountEventMessage evt)
-    {
-        var message = JsonConvert.SerializeObject(evt);
-        var serviceBusMessage = new ServiceBusMessage(message);
-        await _sender.SendMessageAsync(serviceBusMessage);
-        _logger.LogInformation($"Published event: {evt.EventType} for user {evt.UserId}");
-    }
+    
 
     public async Task PublishVerificationCodeSentEventAsync(string userId, string? email, string code)
     {
-        var evt = new AccountEventMessage
-        {
-            EventType = "VerificationCodeSent",
-            UserId = userId,
-            Email = email,
-            Code = code,
-        };
-        await PublishEventAsync(evt);
+        var emailRequest = EmailRequestFactory.CreateVerificationEmail(email!, code);
+        await PublishEmailRequestAsync(emailRequest, userId, "verification code");
+    }
+
+    private async Task PublishEmailRequestAsync(EmailSendRequest request, string userId, string mailType)
+    {
+        var message = JsonConvert.SerializeObject(request);
+        var serviceBusMessage = new ServiceBusMessage(message);
+        logger.LogInformation("Publishing EmailSendRequest to ServiceBus: {Payload}", message);
+        await _sender.SendMessageAsync(serviceBusMessage);
+        logger.LogInformation($"Published {mailType} email for user {userId}");
     }
 
     public async Task PublishAccountCreatedEventAsync(string userId, string? email)
     {
-        var evt = new AccountEventMessage
-        {
-            EventType = "AccountCreated",
-            UserId = userId,
-            Email = email,
-        };
-        await PublishEventAsync(evt);
+        var emailRequest = EmailRequestFactory.CreateWelcomeEmail(email!);
+        await PublishEmailRequestAsync(emailRequest, userId, "welcome");
     }
 
     public async Task PublishPasswordResetRequestedEventAsync(string userId, string? email, string token)
     {
-        var evt = new AccountEventMessage
-        {
-            EventType = "PasswordResetRequested",
-            UserId = userId,
-            Email = email,
-            Token = token,
-        };
-        await PublishEventAsync(evt);
+        var emailRequest = EmailRequestFactory.CreatePasswordResetEmail(email!, token);
+        await PublishEmailRequestAsync(emailRequest, userId, "password reset");
     }
 
     public async Task PublishAccountDeletedEventAsync(string userId, string? email)
     {
-        var evt = new AccountEventMessage
-        {
-            EventType = "AccountDeleted",
-            UserId = userId,
-            Email = email,
-        };
-        await PublishEventAsync(evt);
+        var emailRequest = EmailRequestFactory.CreateAccountDeletedEmail(email!);
+        await PublishEmailRequestAsync(emailRequest, userId, "account deleted");
     }
+
+    public async ValueTask DisposeAsync() => await _sender.DisposeAsync();
 }

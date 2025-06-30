@@ -1,3 +1,5 @@
+using AccountService.Contracts.DTOs;
+
 namespace AccountService.Contracts.Responses;
 
 public class ValidateCredentialsResult : ResponseResult
@@ -7,4 +9,5 @@ public class ValidateCredentialsResult : ResponseResult
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public bool EmailConfirmed { get; set; }
+    public UserAccountDto? User { get; set; }
 }

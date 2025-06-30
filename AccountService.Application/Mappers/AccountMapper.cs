@@ -7,7 +7,7 @@ namespace Application.Mappers;
 public static class AccountMapper
 {
     // Maps a User entity to a UserAccountDto
-    private static UserAccountDto? ToUserAccountDto(this User? user)
+    public static UserAccountDto? ToUserAccountDto(this User? user)
     {
         if (user == null)
             return null;
@@ -39,7 +39,8 @@ public static class AccountMapper
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            EmailConfirmed = user.EmailConfirmed
+            EmailConfirmed = user.EmailConfirmed,
+            User = user.ToUserAccountDto()
         };
     }
     
