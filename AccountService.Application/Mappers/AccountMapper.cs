@@ -14,7 +14,7 @@ public static class AccountMapper
             
         return new UserAccountDto
         {
-            UserId = user.Id,
+            Id = user.Id,
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
@@ -35,11 +35,39 @@ public static class AccountMapper
         {
             Succeeded = true,
             Message = message,
-            UserId = user.Id,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            EmailConfirmed = user.EmailConfirmed,
+            User = user.ToUserAccountDto()
+        };
+    }
+    
+    // Maps a User entity to a StartRegistrationResult
+    public static StartRegistrationResult ToStartRegistrationResult(this User user, string? message = "Verification code sent.")
+    {
+        return new StartRegistrationResult
+        {
+            Succeeded = true,
+            Message = message,
+            User = user.ToUserAccountDto()
+        };
+    }
+    
+    // Maps a User entity to a CompleteRegistrationResult
+    public static CompleteRegistrationResult ToCompleteRegistrationResult(this User user, string? message = "Registration complete.")
+    {
+        return new CompleteRegistrationResult
+        {
+            Succeeded = true,
+            Message = message,
+            User = user.ToUserAccountDto()
+        };
+    }
+    
+    // Maps a User entity to a ConfirmEmailCodeResult
+    public static ConfirmEmailCodeResult ToConfirmEmailCodeResult(this User user, string? message = "Email confirmed.")
+    {
+        return new ConfirmEmailCodeResult
+        {
+            Succeeded = true,
+            Message = message,
             User = user.ToUserAccountDto()
         };
     }

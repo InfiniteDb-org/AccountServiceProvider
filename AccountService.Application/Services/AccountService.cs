@@ -22,18 +22,11 @@ public interface IAccountService
     Task<ResponseResult<ResetPasswordResult>> ResetPasswordAsync(ResetPasswordRequest request);
 }
 
-public class AccountService : IAccountService
+public class AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger) : IAccountService
 {
-    private readonly IAccountRepository _accountRepository;
-    private readonly IEventPublisher _eventPublisher;
-    private readonly ILogger<AccountService> _logger;
-
-    public AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger)
-    {
-        _accountRepository = accountRepository;
-        _eventPublisher = eventPublisher;
-        _logger = logger;
-    }
+    private readonly IAccountRepository _accountRepository = accountRepository;
+    private readonly IEventPublisher _eventPublisher = eventPublisher;
+    private readonly ILogger<AccountService> _logger = logger;
 
 
     public async Task<ResponseResult<StartRegistrationResult>> StartRegistrationAsync(StartRegistrationRequest request)
@@ -47,22 +40,16 @@ public class AccountService : IAccountService
 
         var user = new User { Email = request.Email };
         var createResult = await _accountRepository.CreateAsync(user, "");
-        if (!createResult.Succeeded)
+        if (!createResult.Succeeded || createResult.Result == null)
             return ResponseResult<StartRegistrationResult>.Failure(createResult.Message ?? "Failed to create user.");
 
-        var code = GenerateSixDigitCode();
+        var code = Guid.NewGuid().ToString("N").Substring(0, 6);
         var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
         if (!saveCodeResult.Succeeded)
             return ResponseResult<StartRegistrationResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
 
         await _eventPublisher.PublishVerificationCodeSentEventAsync(user.Id.ToString(), user.Email, code);
-        var result = new StartRegistrationResult
-        {
-            Succeeded = true,
-            Message = "Verification code sent.",
-            UserId = user.Id,
-            User = user.ToUserAccountDto()
-        };
+        var result = user.ToStartRegistrationResult();
         return ResponseResult<StartRegistrationResult>.Success(result, result.Message);
     }
 
@@ -76,8 +63,8 @@ public class AccountService : IAccountService
             return ResponseResult<ConfirmEmailCodeResult>.Failure("User not found.");
 
         var codeResult = await _accountRepository.GetSavedVerificationCodeAsync(userResult.Result);
-        if (!codeResult.Succeeded || codeResult.Result == null)
-            return ResponseResult<ConfirmEmailCodeResult>.Failure("Verification code not found.");
+        if (!codeResult.Succeeded)
+            return ResponseResult<ConfirmEmailCodeResult>.Failure(codeResult.Message ?? "Failed to get verification code.");
 
         if (codeResult.Result != request.Code)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Invalid verification code.");
@@ -86,13 +73,7 @@ public class AccountService : IAccountService
         if (!confirmResult.Succeeded)
             return ResponseResult<ConfirmEmailCodeResult>.Failure(confirmResult.Message ?? "Failed to confirm email.");
 
-        var result = new ConfirmEmailCodeResult
-        {
-            Succeeded = true,
-            Message = "Email confirmed.",
-            UserId = userResult.Result.Id,
-            User = userResult.Result.ToUserAccountDto()
-        };
+        var result = userResult.Result.ToConfirmEmailCodeResult();
         return ResponseResult<ConfirmEmailCodeResult>.Success(result, result.Message);
     }
 
@@ -109,8 +90,6 @@ public class AccountService : IAccountService
         if (!user.EmailConfirmed)
             return ResponseResult<CompleteRegistrationResult>.Failure("Email not confirmed.");
 
-        user.FirstName = request.FirstName;
-        user.LastName = request.LastName;
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         user.UpdatedAt = DateTime.UtcNow;
         var updateResult = await _accountRepository.UpdateAsync(user);
@@ -118,17 +97,9 @@ public class AccountService : IAccountService
             return ResponseResult<CompleteRegistrationResult>.Failure(updateResult.Message ?? "Failed to complete registration.");
 
         await _eventPublisher.PublishAccountCreatedEventAsync(user.Id.ToString(), user.Email);
-
-        var result = new CompleteRegistrationResult
-        {
-            Succeeded = true,
-            Message = "Registration complete.",
-            UserId = user.Id,
-            User = user.ToUserAccountDto()
-        };
+        var result = user.ToCompleteRegistrationResult();
         return ResponseResult<CompleteRegistrationResult>.Success(result, result.Message);
     }
-
 
     public async Task<ResponseResult<ValidateCredentialsResult>> ValidateCredentialsAsync(ValidateCredentialsRequest request)
     {
@@ -187,7 +158,7 @@ public class AccountService : IAccountService
             return ResponseResult<GenerateTokenResult>.Failure("User not found.");
 
         var user = userResult.Result;
-        var code = GenerateSixDigitCode();
+        var code = Guid.NewGuid().ToString("N").Substring(0, 6);
         var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
         if (!saveCodeResult.Succeeded)
             return ResponseResult<GenerateTokenResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
@@ -236,7 +207,7 @@ public class AccountService : IAccountService
         if (!userResult.Succeeded)
             return ResponseResult<ForgotPasswordResult>.Failure(userResult.Message ?? "Failed to retrieve user.");
 
-        if (userResult.Result == null || !userResult.Result.EmailConfirmed)
+        if (userResult.Result is not { EmailConfirmed: true })
         {
             // Don't reveal that the user does not exist or is not confirmed
             return ResponseResult<ForgotPasswordResult>.Success(new ForgotPasswordResult { Succeeded = true, Message = "If your email is registered, a password reset link will be sent." });
