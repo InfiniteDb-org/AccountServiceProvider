@@ -6,46 +6,39 @@ public static class EmailRequestFactory
 {
     public static EmailSendRequest CreateVerificationEmail(string recipient, string code)
     {
-        var subject = $"Your code is {code}";
-        var plainTextContent = 
-            $"""
-                Verify Your Email Address\n\nHello,\n\nTo 
-                complete your verification, please enter the following code:\n\n{code}\n\nAlternatively, 
-                you can open the verification page using the following link:\nhttps://infinitedb.com/verify?email={recipient}&token={code}\n\n
-                If you did not initiate this request, you can safely disregard this email.\n
-                We take your privacy seriously. No further action is required if you did not initiate this request.\n\n
-                For more information about how we process personal data, please see our Privacy Policy: https://infinitedb.com/privacy-policy\n\n© infinitedb.com. 
-                All rights reserved.
-             """;
+        var subject = "InfiniteDb - Verification Code";
+        var plainTextContent = $"""
+Hi!
 
-        var htmlContent =
-            $"""
-                <!DOCTYPE html>
-                <html lang='en'>
-                <head>
-                    <meta charset='UTF-8'>
-                    <title>Your verification code</title>
-                </head>
-                <body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
-                    <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
-                        <h1 style='font-size:32px; font-weight:600; color:#3747D0; margin-bottom:16px; text-align:center;'>Verify Your Email Address</h1>
-                        <p style='font-size:16px; color:#1E1E20; margin-bottom:16px;'>Hello,</p>
-                        <p style='font-size:16px; color:#1E1E20; margin-bottom:24px;'>To complete your verification, please enter the code below or click the button to open a new page.</p>
-                        <div style='display:flex; justify-content:center; align-items:center; padding:16px; background-color:#FCD3FE; color:#1C2346; font-size:2em; letter-spacing:2px; font-weight:bold; margin-bottom:28px;'>
-                            {code}
-                        </div>
-                        <div style='text-align:center; margin-bottom:32px;'>
-                            <a href='https://infinitedb.com/verify?email={recipient}&token={code}' style='background-color:#F26CF9; color:#FFFFFF; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:1.1em;'>Open Verification Page</a>
-                        </div>
-                        <p style='color:#222; font-size:1.05em;'>If you did not initiate this request, you can safely disregard this email.</p>
-                        <p style='color:#222; font-size:1.05em;'>We take your privacy seriously. No further action is required if you did not initiate this request.</p>
-                        <a href='https://infinitedb.com/privacy-policy' style='color:#F26CF9; text-decoration:none;'>Privacy Policy</a>
-                        <div style='color:#777; font-size:12px; margin-top:24px; text-align:center;'>© infinitedb.com. All rights reserved.</div>
-                    </div>
-                </body>
-                </html>
-             """;
+Your verification code is: {code}
 
+Enter this code to verify your email address.
+
+If you did not request this code, you can safely ignore this email.
+
+Best regards,
+The InfiniteDb Team
+""";
+        var htmlContent = $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Verify your email</title>
+</head>
+<body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
+  <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
+    <h1 style='font-size:32px; font-weight:600; color:#3747D0; text-align:center;'>Verify your email</h1>
+    <p>Hi!</p>
+    <p>Your verification code is:</p>
+    <div style='font-size:2em; letter-spacing:2px; font-weight:bold; color:#234AA6; margin:24px 0 28px 0; text-align:center;'>{code}</div>
+    <p>Enter this code to verify your email address.</p>
+    <hr style='margin:32px 0; border:none; border-top:1px solid #eee;'/>
+    <p style='font-size:0.95em; color:#888;'>If you did not request this code, you can safely ignore this email.</p>
+    <div style='margin-top:32px; text-align:center; color:#777; font-size:12px;'>© infinitedb.com. All rights reserved.</div>
+  </div>
+</body>
+</html>";
         return new EmailSendRequest
         {
             Recipients = [recipient],
@@ -58,38 +51,36 @@ public static class EmailRequestFactory
     public static EmailSendRequest CreateWelcomeEmail(string recipient)
     {
         var subject = "Welcome to InfiniteDb!";
-        var plainTextContent = 
+        var plainTextContent =
             """
-                Welcome to InfiniteDb!
-                Your account is now activated.
+Hi and welcome to InfiniteDb!
 
-                If you have any questions, visit our support: https://infinitedb.com/support
+Your account is now activated.
 
-                We take your privacy seriously. For more information, see our Privacy Policy: https://infinitedb.com/privacy-policy
+If you have any questions, contact our support at https://infinitedb.com/support
 
-                © infinitedb.com. All rights reserved.
-            """;
-        var htmlContent = 
-            """
-                <!DOCTYPE html>
-                <html lang='en'>
-                <head>
-                    <meta charset='UTF-8'>
-                    <title>Welcome to InfiniteDb!</title>
-                </head>
-                <body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
-                    <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
-                        <h1 style='font-size:32px; font-weight:600; color:#3747D0; margin-bottom:16px; text-align:center;'>Welcome to InfiniteDb!</h1>
-                        <p style='font-size:16px; color:#1E1E20; margin-bottom:24px;'>Your account is now activated.</p>
-                        <div style='text-align:center; margin-bottom:32px;'>
-                            <a href='https://infinitedb.com/support' style='background-color:#234AA6; color:#FFFFFF; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:1.1em;'>Visit Support</a>
-                        </div>
-                        <p style='color:#222; font-size:1.05em;'>We take your privacy seriously. For more information, see our <a href='https://infinitedb.com/privacy-policy' style='color:#F26CF9; text-decoration:none;'>Privacy Policy</a>.</p>
-                        <div style='color:#777; font-size:12px; margin-top:24px; text-align:center;'>© infinitedb.com. All rights reserved.</div>
-                    </div>
-                </body>
-                </html>
-            """;
+Best regards,
+The InfiniteDb Team
+""";
+        var htmlContent = @"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Welcome to InfiniteDb!</title>
+</head>
+<body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
+  <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
+    <h1 style='font-size:32px; font-weight:600; color:#3747D0; text-align:center;'>Welcome to InfiniteDb!</h1>
+    <p>Hi and welcome!</p>
+    <p>Your account is now activated.</p>
+    <div style='text-align:center; margin:32px 0;'>
+      <a href='https://infinitedb.com/support' style='background-color:#234AA6; color:#FFFFFF; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:1.1em;'>Contact support</a>
+    </div>
+    <div style='margin-top:32px; text-align:center; color:#777; font-size:12px;'>© infinitedb.com. All rights reserved.</div>
+  </div>
+</body>
+</html>";
         return new EmailSendRequest
         {
             Recipients = [recipient],
@@ -101,42 +92,38 @@ public static class EmailRequestFactory
 
     public static EmailSendRequest CreatePasswordResetEmail(string recipient, string token)
     {
-        var subject = "Reset your password";
-        var plainTextContent = 
+        var subject = "InfiniteDb - Reset Password";
+        var plainTextContent =
             $"""
-                You requested a password reset for your InfiniteDb account.
+You requested to reset your password for InfiniteDb.
 
-                To reset your password, use this link:
-                https://infinitedb.com/reset?token={token}
+To reset your password, click the link below:
+https://infinitedb.com/reset?token={token}
 
-                If you did not request a password reset, you can ignore this email.
+If you did not request a password reset, you can ignore this email.
 
-                We take your privacy seriously. For more information, see our Privacy Policy: https://infinitedb.com/privacy-policy
-
-                © infinitedb.com. All rights reserved.
-            """;
-        var htmlContent = 
-            $"""
-                <!DOCTYPE html>
-                <html lang='en'>
-                <head>
-                    <meta charset='UTF-8'>
-                    <title>Reset your password</title>
-                </head>
-                <body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
-                    <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
-                        <h1 style='font-size:32px; font-weight:600; color:#234AA6; margin-bottom:16px; text-align:center;'>Reset your password</h1>
-                        <p style='font-size:16px; color:#1E1E20; margin-bottom:24px;'>Click the button below to reset your password:</p>
-                        <div style='text-align:center; margin-bottom:32px;'>
-                            <a href='https://infinitedb.com/reset?token={token}' style='background-color:#234AA6; color:#FFFFFF; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:1.1em;'>Reset Password</a>
-                        </div>
-                        <p style='color:#222; font-size:1.05em;'>If you did not request a password reset, you can ignore this email.</p>
-                        <p style='color:#222; font-size:1.05em;'>We take your privacy seriously. For more information, see our <a href='https://infinitedb.com/privacy-policy' style='color:#F26CF9; text-decoration:none;'>Privacy Policy</a>.</p>
-                        <div style='color:#777; font-size:12px; margin-top:24px; text-align:center;'>© infinitedb.com. All rights reserved.</div>
-                    </div>
-                </body>
-                </html>
-            """;
+Best regards,
+The InfiniteDb Team
+""";
+        var htmlContent = $@"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Reset password</title>
+</head>
+<body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
+  <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
+    <h1 style='font-size:32px; font-weight:600; color:#234AA6; text-align:center;'>Reset your password</h1>
+    <p>You requested to reset your password for InfiniteDb.</p>
+    <div style='text-align:center; margin:32px 0;'>
+      <a href='https://infinitedb.com/reset?token={token}' style='background-color:#234AA6; color:#FFFFFF; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:1.1em;'>Reset Password</a>
+    </div>
+    <p>If you did not request a password reset, you can ignore this email.</p>
+    <div style='margin-top:32px; text-align:center; color:#777; font-size:12px;'>© infinitedb.com. All rights reserved.</div>
+  </div>
+</body>
+</html>";
         return new EmailSendRequest
         {
             Recipients = [recipient],
@@ -148,35 +135,31 @@ public static class EmailRequestFactory
 
     public static EmailSendRequest CreateAccountDeletedEmail(string recipient)
     {
-        var subject = "Your InfiniteDb account has been deleted";
-        var plainTextContent = 
+        var subject = "InfiniteDb - Account Deleted";
+        var plainTextContent =
             """
-                Your InfiniteDb account has been deleted.
+Your InfiniteDb account has been deleted.
 
-                If this was not you, please contact our support immediately: https://infinitedb.com/support
+If this was not you, please contact support immediately: https://infinitedb.com/support
 
-                We take your privacy seriously. For more information, see our Privacy Policy: https://infinitedb.com/privacy-policy
-
-                © infinitedb.com. All rights reserved.
-            """;
-        var htmlContent = 
-            """
-                <!DOCTYPE html>
-                <html lang='en'>
-                <head>
-                    <meta charset='UTF-8'>
-                    <title>Account deleted</title>
-                </head>
-                <body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
-                    <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
-                        <h1 style='font-size:32px; font-weight:600; color:#D03434; margin-bottom:16px; text-align:center;'>Your InfiniteDb account has been deleted</h1>
-                        <p style='font-size:16px; color:#1E1E20; margin-bottom:24px;'>If this was not you, please <a href='https://infinitedb.com/support' style='color:#F26CF9; text-decoration:underline;'>contact our support</a> immediately.</p>
-                        <p style='color:#222; font-size:1.05em;'>We take your privacy seriously. For more information, see our <a href='https://infinitedb.com/privacy-policy' style='color:#F26CF9; text-decoration:none;'>Privacy Policy</a>.</p>
-                        <div style='color:#777; font-size:12px; margin-top:24px; text-align:center;'>© infinitedb.com. All rights reserved.</div>
-                    </div>
-                </body>
-                </html>
-            """;
+Best regards,
+The InfiniteDb Team
+""";
+        var htmlContent = @"
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Account deleted</title>
+</head>
+<body style='margin:0; padding:32px; font-family: Inter, sans-serif; background-color:#F7F7F7; color:#1E1E20;'>
+  <div style='max-width:600px; margin:32px auto; background:#FFFFFF; border-radius:12px; padding:32px;'>
+    <h1 style='font-size:32px; font-weight:600; color:#D03434; text-align:center;'>Your InfiniteDb account has been deleted</h1>
+    <p>If this was not you, <a href='https://infinitedb.com/support' style='color:#F26CF9; text-decoration:underline;'>contact support</a> immediately.</p>
+    <div style='margin-top:32px; text-align:center; color:#777; font-size:12px;'>© infinitedb.com. All rights reserved.</div>
+  </div>
+</body>
+</html>";
         return new EmailSendRequest
         {
             Recipients = [recipient],
