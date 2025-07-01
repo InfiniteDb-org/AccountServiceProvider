@@ -35,7 +35,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<StartRegistrationResult>.Failure("Email is required.");
 
         var existingUser = await _accountRepository.GetByEmailAsync(request.Email);
-        if (existingUser.Succeeded && existingUser.Result != null)
+        if (existingUser is { Succeeded: true, Result: not null })
             return ResponseResult<StartRegistrationResult>.Failure("Account already exists.");
 
         var user = new User { Email = request.Email };
@@ -43,7 +43,8 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (!createResult.Succeeded || createResult.Result == null)
             return ResponseResult<StartRegistrationResult>.Failure(createResult.Message ?? "Failed to create user.");
 
-        var code = Guid.NewGuid().ToString("N").Substring(0, 6);
+        var random = new Random();
+        var code = random.Next(100000, 999999).ToString(); 
         var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
         if (!saveCodeResult.Succeeded)
             return ResponseResult<StartRegistrationResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
@@ -158,7 +159,8 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<GenerateTokenResult>.Failure("User not found.");
 
         var user = userResult.Result;
-        var code = Guid.NewGuid().ToString("N").Substring(0, 6);
+        var random = new Random();
+        var code = random.Next(100000, 1000000).ToString(); // Alltid 6 siffror
         var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
         if (!saveCodeResult.Succeeded)
             return ResponseResult<GenerateTokenResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
