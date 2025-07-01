@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AaccountService.Infrastruct
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccountService.Contracts", "AccountService.Contracts\AccountService.Contracts.csproj", "{BD562875-EB26-4CCF-9D18-40BD32D0BA11}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccountService_Tests", "AccountService_Tests\AccountService_Tests.csproj", "{ABA5B5D9-44A1-4770-86F1-3781E67B181C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{BD562875-EB26-4CCF-9D18-40BD32D0BA11}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD562875-EB26-4CCF-9D18-40BD32D0BA11}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BD562875-EB26-4CCF-9D18-40BD32D0BA11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABA5B5D9-44A1-4770-86F1-3781E67B181C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABA5B5D9-44A1-4770-86F1-3781E67B181C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABA5B5D9-44A1-4770-86F1-3781E67B181C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABA5B5D9-44A1-4770-86F1-3781E67B181C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
