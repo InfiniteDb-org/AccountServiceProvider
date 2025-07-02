@@ -43,13 +43,9 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (!createResult.Succeeded || createResult.Result == null)
             return ResponseResult<StartRegistrationResult>.Failure(createResult.Message ?? "Failed to create user.");
 
-        var random = new Random();
-        var code = random.Next(100000, 999999).ToString(); 
-        var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
-        if (!saveCodeResult.Succeeded)
-            return ResponseResult<StartRegistrationResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
+        // Skicka event till VerificationServiceProvider för kodgenerering och utskick
+        await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
 
-        await _eventPublisher.PublishVerificationCodeSentEventAsync(user.Id.ToString(), user.Email, code);
         var result = user.ToStartRegistrationResult();
         return ResponseResult<StartRegistrationResult>.Success(result, result.Message);
     }
@@ -60,7 +56,10 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Email and code are required.");
 
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
-        if (!userResult.Succeeded || userResult.Result == null)
+        if (!userResult.Succeeded)
+            return ResponseResult<ConfirmEmailCodeResult>.Failure("User not found.");
+
+        if (userResult.Result == null)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("User not found.");
 
         var codeResult = await _accountRepository.GetSavedVerificationCodeAsync(userResult.Result);
@@ -84,7 +83,10 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<CompleteRegistrationResult>.Failure("Email and password are required.");
 
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
-        if (!userResult.Succeeded || userResult.Result == null)
+        if (!userResult.Succeeded)
+            return ResponseResult<CompleteRegistrationResult>.Failure(userResult.Message ?? "Failed to retrieve user.");
+
+        if (userResult.Result == null)
             return ResponseResult<CompleteRegistrationResult>.Failure("User not found.");
 
         var user = userResult.Result;
@@ -159,17 +161,13 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<GenerateTokenResult>.Failure("User not found.");
 
         var user = userResult.Result;
-        var random = new Random();
-        var code = random.Next(100000, 1000000).ToString(); // Alltid 6 siffror
-        var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
-        if (!saveCodeResult.Succeeded)
-            return ResponseResult<GenerateTokenResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
+        // Skicka event till VerificationServiceProvider för kodgenerering och utskick
+        await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
 
         var response = new GenerateTokenResult
         {
             Succeeded = true,
-            Token = code,
-            Message = "New email confirmation code generated."
+            Message = "New email confirmation code requested."
         };
         return ResponseResult<GenerateTokenResult>.Success(response);
     }
@@ -270,11 +268,5 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
 
         await _eventPublisher.PublishAccountDeletedEventAsync(user.Id.ToString(), user.Email);
         return ResponseResult<bool>.Success(true);
-    }
-
-    private static string GenerateSixDigitCode()
-    {
-        var random = new Random();
-        return random.Next(100000, 999999).ToString();
     }
 }

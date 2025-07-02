@@ -33,7 +33,7 @@ public class AccountServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.NotNull(result.Data);
-        _eventPublisherMock.Verify(e => e.PublishVerificationCodeSentEventAsync(It.IsAny<string>(), email, It.IsAny<string>()), Times.Once);
+        _eventPublisherMock.Verify(e => e.PublishVerificationCodeRequestedAsync(It.IsAny<string>(), email), Times.Once);
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class AccountServiceTests
         Assert.False(result.Succeeded);
         Assert.Equal("Account already exists.", result.Message);
         // Senior: Ensure no event is published for duplicate registration
-        _eventPublisherMock.Verify(e => e.PublishVerificationCodeSentEventAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _eventPublisherMock.Verify(e => e.PublishVerificationCodeRequestedAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

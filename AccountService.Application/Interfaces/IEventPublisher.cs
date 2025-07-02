@@ -6,4 +6,5 @@ public interface IEventPublisher
     Task PublishAccountCreatedEventAsync(string userId, string? email);
     Task PublishPasswordResetRequestedEventAsync(string userId, string? email, string token);
     Task PublishAccountDeletedEventAsync(string userId, string? email);
+    Task PublishVerificationCodeRequestedAsync(string userId, string email);
 }
