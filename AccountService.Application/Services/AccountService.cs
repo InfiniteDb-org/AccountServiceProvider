@@ -161,7 +161,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<GenerateTokenResult>.Failure("User not found.");
 
         var user = userResult.Result;
-        // Skicka event till VerificationServiceProvider för kodgenerering och utskick
+        // ssend evend to VerificationServiceProvider for code generation and sending
         await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
 
         var response = new GenerateTokenResult

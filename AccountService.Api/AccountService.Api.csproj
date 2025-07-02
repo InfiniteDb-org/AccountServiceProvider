@@ -20,6 +20,5 @@
       <ProjectReference Include="..\AaccountService.Infrastructure\AaccountService.Infrastructure.csproj" />
       <ProjectReference Include="..\AccountService.Application\AccountService.Application.csproj" />
       <ProjectReference Include="..\AccountService.Contracts\AccountService.Contracts.csproj" />
-      <ProjectReference Include="..\..\Contracts\InfiniteDb.Contracts.csproj" />
     </ItemGroup>
 </Project>

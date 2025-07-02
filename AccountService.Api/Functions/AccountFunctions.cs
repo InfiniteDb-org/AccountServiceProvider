@@ -29,7 +29,7 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in StartRegistration");
-            return ActionResultHelper.BadRequest("Internal server error");
+            return ActionResultHelper.BadRequest($"Internal server error: {ex.Message}");
         }
     }
 

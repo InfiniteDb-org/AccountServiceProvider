@@ -2,16 +2,31 @@ using AccountService.Contracts.Events;
 using Application.Interfaces;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
 namespace Infrastructure.Messaging;
 
-public class EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPublisher> logger) : IEventPublisher, IAsyncDisposable
+public class EventPublisher : IEventPublisher, IAsyncDisposable
 {
-    private const string QueueName = "account-events";
-    private const string VerificationRequestsQueue = "verification-requests";
-    private readonly ServiceBusSender _sender = serviceBusClient.CreateSender(QueueName);
-    private readonly ServiceBusSender _verificationSender = serviceBusClient.CreateSender(VerificationRequestsQueue);
+    private readonly ServiceBusSender _sender;
+    private readonly ServiceBusSender _verificationSender;
+    private readonly ILogger<EventPublisher> _logger;
+
+    public EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPublisher> logger, IConfiguration config)
+    {
+        var accountEventsQueue = config["ASB_AccountEventsQueue"];
+        if (string.IsNullOrWhiteSpace(accountEventsQueue))
+            throw new InvalidOperationException("ASB_AccountEventsQueue is not configured.");
+
+        var verificationRequestsQueue = config["ASB_VerificationRequestsQueue"];
+        if (string.IsNullOrWhiteSpace(verificationRequestsQueue))
+            throw new InvalidOperationException("ASB_VerificationRequestsQueue is not configured.");
+
+        _sender = serviceBusClient.CreateSender(accountEventsQueue);
+        _verificationSender = serviceBusClient.CreateSender(verificationRequestsQueue);
+        _logger = logger;
+    }
 
     public async Task PublishVerificationCodeSentEventAsync(string userId, string? email, string code)
     {
@@ -67,7 +82,7 @@ public class EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPubl
             Email = email
         };
         var message = JsonConvert.SerializeObject(evt);
-        logger.LogInformation("Publishing VerificationCodeRequestedEvent: {Payload}", message);
+        _logger.LogInformation("Publishing VerificationCodeRequestedEvent: {Payload}", message);
         await _verificationSender.SendMessageAsync(new ServiceBusMessage(message));
     }
 
@@ -75,9 +90,9 @@ public class EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPubl
     {
         var message = JsonConvert.SerializeObject(evt);
         var serviceBusMessage = new ServiceBusMessage(message);
-        logger.LogInformation("Publishing AccountEventMessage to ServiceBus: {Payload}", message);
+        _logger.LogInformation("Publishing AccountEventMessage to ServiceBus: {Payload}", message);
         await _sender.SendMessageAsync(serviceBusMessage);
-        logger.LogInformation($"Published {evt.EventType} event for user {evt.UserId}");
+        _logger.LogInformation($"Published {evt.EventType} event for user {evt.UserId}");
     }
 
     public async ValueTask DisposeAsync() 
@@ -86,4 +101,3 @@ public class EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPubl
         await _verificationSender.DisposeAsync();
     }
 }
-
