@@ -63,56 +63,11 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
 
     public async Task<RepositoryResult<bool>> ConfirmEmailAsync(User user, string token)
     {
-        var codeResult = await GetSavedVerificationCodeAsync(user);
-        if (!codeResult.Succeeded || codeResult.Result != token)
-            return RepositoryResult<bool>.Fail("Invalid or expired verification code.");
         user.EmailConfirmed = true;
         user.UpdatedAt = DateTime.UtcNow;
         _dbContext.Users.Update(user);
         await _dbContext.SaveChangesAsync();
         return RepositoryResult<bool>.Success(true, "Email confirmed");
-    }
-
-    public async Task<RepositoryResult<bool>> SaveVerificationCodeAsync(User user, string code)
-    {
-        try
-        {
-            var oldCodes = await _dbContext.EmailVerificationCodes
-                .Where(x => x.UserId == user.Id)
-                .ToListAsync();
-            
-            _dbContext.EmailVerificationCodes.RemoveRange(oldCodes);
-        
-            var entity = new EmailVerificationCode 
-            { 
-                Id = Guid.NewGuid(), 
-                UserId = user.Id, 
-                Code = code, 
-                CreatedAt = DateTime.UtcNow 
-            };
-        
-            _dbContext.EmailVerificationCodes.Add(entity);
-            await _dbContext.SaveChangesAsync();
-        
-            return RepositoryResult<bool>.Success(true, "Verification code saved");
-        }
-        catch (Exception ex)
-        {
-            return RepositoryResult<bool>.Fail(ex.Message);
-        }
-    }
-
-    public async Task<RepositoryResult<string?>> GetSavedVerificationCodeAsync(User user)
-    {
-        try
-        {
-            var code = await _dbContext.EmailVerificationCodes.Where(x => x.UserId == user.Id).OrderByDescending(x => x.CreatedAt).Select(x => x.Code).FirstOrDefaultAsync();
-            return RepositoryResult<string?>.Success(code, code != null ? "Code found" : "No code found");
-        }
-        catch (Exception ex)
-        {
-            return RepositoryResult<string?>.Fail(ex.Message);
-        }
     }
 
     public Task<RepositoryResult<string>> GeneratePasswordResetTokenAsync(User user)

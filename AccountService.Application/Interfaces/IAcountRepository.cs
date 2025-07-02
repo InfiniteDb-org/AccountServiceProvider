@@ -14,9 +14,6 @@ public interface IAccountRepository
     
     Task<RepositoryResult<bool>> ConfirmEmailAsync(User user, string token);
     
-    Task<RepositoryResult<bool>> SaveVerificationCodeAsync(User user, string code);
-    Task<RepositoryResult<string?>> GetSavedVerificationCodeAsync(User user);
-    
     Task<RepositoryResult<string>> GeneratePasswordResetTokenAsync(User user);
     Task<RepositoryResult<bool>> ResetPasswordAsync(User user, string token, string newPassword);
 }

@@ -10,11 +10,16 @@ public class AccountServiceTests
 {
     private readonly Mock<IAccountRepository> _repoMock = new();
     private readonly Mock<IEventPublisher> _eventPublisherMock = new();
+    private readonly Mock<Application.Providers.IEmailVerificationProvider> _emailVerificationProviderMock = new();
     private readonly Application.Services.AccountService _service;
 
     public AccountServiceTests()
     {
-        _service = new Application.Services.AccountService(_repoMock.Object, _eventPublisherMock.Object, Mock.Of<Microsoft.Extensions.Logging.ILogger<Application.Services.AccountService>>());
+        _service = new Application.Services.AccountService(
+            _repoMock.Object, 
+            _eventPublisherMock.Object, 
+            Mock.Of<Microsoft.Extensions.Logging.ILogger<Application.Services.AccountService>>(), 
+            _emailVerificationProviderMock.Object);
     }
 
     [Fact]
@@ -25,7 +30,6 @@ public class AccountServiceTests
         var request = new StartRegistrationRequest { Email = email };
         _repoMock.Setup(r => r.GetByEmailAsync(email)).ReturnsAsync(new RepositoryResult<User> { Succeeded = false });
         _repoMock.Setup(r => r.CreateAsync(It.IsAny<User>(), "")).ReturnsAsync(new RepositoryResult<User> { Succeeded = true, Result = new User { Email = email } });
-        _repoMock.Setup(r => r.SaveVerificationCodeAsync(It.IsAny<User>(), It.IsAny<string>())).ReturnsAsync(new RepositoryResult<bool> { Succeeded = true });
 
         // Act
         var result = await _service.StartRegistrationAsync(request);
@@ -113,7 +117,7 @@ public class AccountServiceTests
         var request = new ConfirmEmailCodeRequest { Email = "user@example.com", Code = "wrongcode" };
         var user = new User { Email = request.Email };
         _repoMock.Setup(r => r.GetByEmailAsync(request.Email)).ReturnsAsync(new RepositoryResult<User> { Succeeded = true, Result = user });
-        _repoMock.Setup(r => r.GetSavedVerificationCodeAsync(user))!.ReturnsAsync(new RepositoryResult<string> { Succeeded = true, Result = "correctcode" });
+        _emailVerificationProviderMock.Setup(x => x.VerifyCodeAsync(request.Email, request.Code)).ReturnsAsync(false);
         // Act
         var result = await _service.ConfirmEmailCodeAsync(request);
         // Assert
@@ -128,8 +132,8 @@ public class AccountServiceTests
         var request = new ConfirmEmailCodeRequest { Email = "user@example.com", Code = "123456" };
         var user = new User { Email = request.Email };
         _repoMock.Setup(r => r.GetByEmailAsync(request.Email)).ReturnsAsync(new RepositoryResult<User> { Succeeded = true, Result = user });
-        _repoMock.Setup(r => r.GetSavedVerificationCodeAsync(user))!.ReturnsAsync(new RepositoryResult<string> { Succeeded = true, Result = "123456" });
         _repoMock.Setup(r => r.ConfirmEmailAsync(user, "123456")).ReturnsAsync(new RepositoryResult<bool> { Succeeded = true });
+        _emailVerificationProviderMock.Setup(x => x.VerifyCodeAsync(request.Email, request.Code)).ReturnsAsync(true);
         // Act
         var result = await _service.ConfirmEmailCodeAsync(request);
         // Assert

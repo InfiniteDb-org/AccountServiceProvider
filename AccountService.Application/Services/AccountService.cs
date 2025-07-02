@@ -3,6 +3,7 @@ using AccountService.Contracts.Responses;
 using Application.Interfaces;
 using Application.Mappers;
 using Application.Models;
+using Application.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
@@ -22,12 +23,12 @@ public interface IAccountService
     Task<ResponseResult<ResetPasswordResult>> ResetPasswordAsync(ResetPasswordRequest request);
 }
 
-public class AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger) : IAccountService
+public class AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger, IEmailVerificationProvider emailVerificationProvider) : IAccountService
 {
     private readonly IAccountRepository _accountRepository = accountRepository;
     private readonly IEventPublisher _eventPublisher = eventPublisher;
     private readonly ILogger<AccountService> _logger = logger;
-
+    private readonly IEmailVerificationProvider _emailVerificationProvider = emailVerificationProvider;
 
     public async Task<ResponseResult<StartRegistrationResult>> StartRegistrationAsync(StartRegistrationRequest request)
     {
@@ -56,17 +57,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Email and code are required.");
 
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
-        if (!userResult.Succeeded)
+        if (!userResult.Succeeded || userResult.Result == null)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("User not found.");
 
-        if (userResult.Result == null)
-            return ResponseResult<ConfirmEmailCodeResult>.Failure("User not found.");
-
-        var codeResult = await _accountRepository.GetSavedVerificationCodeAsync(userResult.Result);
-        if (!codeResult.Succeeded)
-            return ResponseResult<ConfirmEmailCodeResult>.Failure(codeResult.Message ?? "Failed to get verification code.");
-
-        if (codeResult.Result != request.Code)
+        var isValid = await _emailVerificationProvider.VerifyCodeAsync(request.Email, request.Code);
+        if (!isValid)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Invalid verification code.");
 
         var confirmResult = await _accountRepository.ConfirmEmailAsync(userResult.Result, request.Code);
@@ -161,7 +156,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<GenerateTokenResult>.Failure("User not found.");
 
         var user = userResult.Result;
-        // ssend evend to VerificationServiceProvider for code generation and sending
+        // send event to VerificationServiceProvider for code generation and sending
         await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
 
         var response = new GenerateTokenResult

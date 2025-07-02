@@ -1,3 +1,4 @@
+using Application.Providers;
 using Infrastructure.Extensions;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -19,6 +20,7 @@ var serviceBusConnectionString = builder.Configuration.GetConnectionString("ASB_
 // Register services from extensions
 builder.Services.AddServices(serviceBusConnectionString);
 builder.Services.AddRepositories(builder.Configuration);
+builder.Services.AddHttpClient<IEmailVerificationProvider, EmailVerificationProvider>();
 
 var app = builder.Build();
 
