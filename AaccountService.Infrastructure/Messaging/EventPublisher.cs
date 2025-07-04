@@ -82,17 +82,18 @@ public class EventPublisher : IEventPublisher, IAsyncDisposable
             Email = email
         };
         var message = JsonConvert.SerializeObject(evt);
-        _logger.LogInformation("Publishing VerificationCodeRequestedEvent: {Payload}", message);
+        _logger.LogInformation("Publishing VerificationCodeRequestedEvent to verification-code-requests queue: {Payload}", message);
         await _verificationSender.SendMessageAsync(new ServiceBusMessage(message));
+        _logger.LogInformation("Successfully sent VerificationCodeRequestedEvent to verification-code-requests queue for user {UserId}", userId);
     }
 
     private async Task PublishEventAsync(AccountMessageEvent evt)
     {
         var message = JsonConvert.SerializeObject(evt);
         var serviceBusMessage = new ServiceBusMessage(message);
-        _logger.LogInformation("Publishing AccountEventMessage to ServiceBus: {Payload}", message);
+        _logger.LogInformation("Publishing {EventType} to account-lifecycle-events queue: {Payload}", evt.EventType, message);
         await _sender.SendMessageAsync(serviceBusMessage);
-        _logger.LogInformation($"Published {evt.EventType} event for user {evt.UserId}");
+        _logger.LogInformation("Successfully sent {EventType} event to account-lifecycle-events queue for user {UserId}", evt.EventType, evt.UserId);
     }
 
     public async ValueTask DisposeAsync() 
