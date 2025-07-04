@@ -18,7 +18,7 @@ var serviceBusConnectionString = builder.Configuration.GetConnectionString("ASB_
                                  ?? throw new InvalidOperationException("ASB_ConnectionString is not configured.");
 
 // Register services from extensions
-builder.Services.AddServices(serviceBusConnectionString);
+builder.Services.AddServices(serviceBusConnectionString, builder.Configuration);
 builder.Services.AddRepositories(builder.Configuration);
 builder.Services.AddHttpClient<IEmailVerificationProvider, EmailVerificationProvider>();
 

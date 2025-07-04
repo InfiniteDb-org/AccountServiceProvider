@@ -23,12 +23,13 @@ public interface IAccountService
     Task<ResponseResult<ResetPasswordResult>> ResetPasswordAsync(ResetPasswordRequest request);
 }
 
-public class AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger, IEmailVerificationProvider emailVerificationProvider) : IAccountService
+public class AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger, IEmailVerificationProvider emailVerificationProvider, IPasswordValidator passwordValidator) : IAccountService
 {
     private readonly IAccountRepository _accountRepository = accountRepository;
     private readonly IEventPublisher _eventPublisher = eventPublisher;
     private readonly ILogger<AccountService> _logger = logger;
     private readonly IEmailVerificationProvider _emailVerificationProvider = emailVerificationProvider;
+    private readonly IPasswordValidator _passwordValidator = passwordValidator;
 
     public async Task<ResponseResult<StartRegistrationResult>> StartRegistrationAsync(StartRegistrationRequest request)
     {
@@ -43,8 +44,8 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         var createResult = await _accountRepository.CreateAsync(user, "");
         if (!createResult.Succeeded || createResult.Result == null)
             return ResponseResult<StartRegistrationResult>.Failure(createResult.Message ?? "Failed to create user.");
-
-        // Skicka event till VerificationServiceProvider för kodgenerering och utskick
+        
+        // send event to VerificationServiceProvider for code generation and sending
         await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
 
         var result = user.ToStartRegistrationResult();
@@ -57,7 +58,10 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Email and code are required.");
 
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
-        if (!userResult.Succeeded || userResult.Result == null)
+        if (!userResult.Succeeded)
+            return ResponseResult<ConfirmEmailCodeResult>.Failure(userResult.Message ?? "Failed to retrieve user.");
+
+        if (userResult.Result == null)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("User not found.");
 
         var isValid = await _emailVerificationProvider.VerifyCodeAsync(request.Email, request.Code);
@@ -76,6 +80,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return ResponseResult<CompleteRegistrationResult>.Failure("Email and password are required.");
+
+        // Validate password requirements
+        var passwordValidation = _passwordValidator.Validate(request.Password);
+        if (!passwordValidation.Succeeded)
+            return ResponseResult<CompleteRegistrationResult>.Failure(passwordValidation.Message!);
 
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
         if (!userResult.Succeeded)
@@ -226,6 +235,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         {
             return ResponseResult<ResetPasswordResult>.Failure("Email, token, and new password are required.");
         }
+
+        // Validate new password requirements
+        var passwordValidation = _passwordValidator.Validate(request.NewPassword);
+        if (!passwordValidation.Succeeded)
+            return ResponseResult<ResetPasswordResult>.Failure(passwordValidation.Message!);
 
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
         if (!userResult.Succeeded)
