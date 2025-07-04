@@ -1,6 +1,6 @@
 namespace AccountService.Contracts.Events;
 
-public class AccountEventMessage
+public class AccountMessageEvent
 {
     public string EventType { get; set; } = null!;
     public string UserId { get; set; } = null!;

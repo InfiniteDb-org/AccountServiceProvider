@@ -3,6 +3,7 @@ using AccountService.Contracts.Responses;
 using Application.Interfaces;
 using Application.Mappers;
 using Application.Models;
+using Application.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
@@ -22,12 +23,13 @@ public interface IAccountService
     Task<ResponseResult<ResetPasswordResult>> ResetPasswordAsync(ResetPasswordRequest request);
 }
 
-public class AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger) : IAccountService
+public class AccountService(IAccountRepository accountRepository, IEventPublisher eventPublisher, ILogger<AccountService> logger, IEmailVerificationProvider emailVerificationProvider, IPasswordValidator passwordValidator) : IAccountService
 {
     private readonly IAccountRepository _accountRepository = accountRepository;
     private readonly IEventPublisher _eventPublisher = eventPublisher;
     private readonly ILogger<AccountService> _logger = logger;
-
+    private readonly IEmailVerificationProvider _emailVerificationProvider = emailVerificationProvider;
+    private readonly IPasswordValidator _passwordValidator = passwordValidator;
 
     public async Task<ResponseResult<StartRegistrationResult>> StartRegistrationAsync(StartRegistrationRequest request)
     {
@@ -42,14 +44,10 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         var createResult = await _accountRepository.CreateAsync(user, "");
         if (!createResult.Succeeded || createResult.Result == null)
             return ResponseResult<StartRegistrationResult>.Failure(createResult.Message ?? "Failed to create user.");
+        
+        // send event to VerificationServiceProvider for code generation and sending
+        await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
 
-        var random = new Random();
-        var code = random.Next(100000, 999999).ToString(); 
-        var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
-        if (!saveCodeResult.Succeeded)
-            return ResponseResult<StartRegistrationResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
-
-        await _eventPublisher.PublishVerificationCodeSentEventAsync(user.Id.ToString(), user.Email, code);
         var result = user.ToStartRegistrationResult();
         return ResponseResult<StartRegistrationResult>.Success(result, result.Message);
     }
@@ -60,14 +58,14 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Email and code are required.");
 
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
-        if (!userResult.Succeeded || userResult.Result == null)
+        if (!userResult.Succeeded)
+            return ResponseResult<ConfirmEmailCodeResult>.Failure(userResult.Message ?? "Failed to retrieve user.");
+
+        if (userResult.Result == null)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("User not found.");
 
-        var codeResult = await _accountRepository.GetSavedVerificationCodeAsync(userResult.Result);
-        if (!codeResult.Succeeded)
-            return ResponseResult<ConfirmEmailCodeResult>.Failure(codeResult.Message ?? "Failed to get verification code.");
-
-        if (codeResult.Result != request.Code)
+        var isValid = await _emailVerificationProvider.VerifyCodeAsync(request.Email, request.Code);
+        if (!isValid)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Invalid verification code.");
 
         var confirmResult = await _accountRepository.ConfirmEmailAsync(userResult.Result, request.Code);
@@ -83,8 +81,16 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return ResponseResult<CompleteRegistrationResult>.Failure("Email and password are required.");
 
+        // Validate password requirements
+        var passwordValidation = _passwordValidator.Validate(request.Password);
+        if (!passwordValidation.Succeeded)
+            return ResponseResult<CompleteRegistrationResult>.Failure(passwordValidation.Message!);
+
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
-        if (!userResult.Succeeded || userResult.Result == null)
+        if (!userResult.Succeeded)
+            return ResponseResult<CompleteRegistrationResult>.Failure(userResult.Message ?? "Failed to retrieve user.");
+
+        if (userResult.Result == null)
             return ResponseResult<CompleteRegistrationResult>.Failure("User not found.");
 
         var user = userResult.Result;
@@ -159,17 +165,13 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<GenerateTokenResult>.Failure("User not found.");
 
         var user = userResult.Result;
-        var random = new Random();
-        var code = random.Next(100000, 1000000).ToString(); // Alltid 6 siffror
-        var saveCodeResult = await _accountRepository.SaveVerificationCodeAsync(user, code);
-        if (!saveCodeResult.Succeeded)
-            return ResponseResult<GenerateTokenResult>.Failure(saveCodeResult.Message ?? "Failed to save verification code.");
+        // send event to VerificationServiceProvider for code generation and sending
+        await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
 
         var response = new GenerateTokenResult
         {
             Succeeded = true,
-            Token = code,
-            Message = "New email confirmation code generated."
+            Message = "New email confirmation code requested."
         };
         return ResponseResult<GenerateTokenResult>.Success(response);
     }
@@ -234,6 +236,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ResetPasswordResult>.Failure("Email, token, and new password are required.");
         }
 
+        // Validate new password requirements
+        var passwordValidation = _passwordValidator.Validate(request.NewPassword);
+        if (!passwordValidation.Succeeded)
+            return ResponseResult<ResetPasswordResult>.Failure(passwordValidation.Message!);
+
         var userResult = await _accountRepository.GetByEmailAsync(request.Email);
         if (!userResult.Succeeded)
             return ResponseResult<ResetPasswordResult>.Failure(userResult.Message ?? "Failed to retrieve user.");
@@ -270,11 +277,5 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
 
         await _eventPublisher.PublishAccountDeletedEventAsync(user.Id.ToString(), user.Email);
         return ResponseResult<bool>.Success(true);
-    }
-
-    private static string GenerateSixDigitCode()
-    {
-        var random = new Random();
-        return random.Next(100000, 999999).ToString();
     }
 }

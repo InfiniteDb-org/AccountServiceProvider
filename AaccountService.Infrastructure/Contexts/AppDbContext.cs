@@ -9,12 +9,10 @@ public class AppDbContext : DbContext
     {
     }
     public DbSet<User> Users { get; set; } = null!;
-    public DbSet<EmailVerificationCode> EmailVerificationCodes { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.Entity<User>().ToContainer("Users");
-        modelBuilder.Entity<EmailVerificationCode>().ToContainer("EmailVerificationCodes");
     }
 }
