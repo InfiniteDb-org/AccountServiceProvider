@@ -1,3 +1,4 @@
+using AccountService.Contracts.Events;
 using AccountService.Contracts.Requests;
 using AccountService.Contracts.Responses;
 using Application.Interfaces;
@@ -46,7 +47,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<StartRegistrationResult>.Failure(createResult.Message ?? "Failed to create user.");
         
         // send event to VerificationServiceProvider for code generation and sending
-        await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
+        await _eventPublisher.PublishVerificationCodeRequestedEventAsync(new VerificationCodeRequestedEvent
+        {
+            UserId = user.Id.ToString(),
+            Email = user.Email
+        });
 
         var result = user.ToStartRegistrationResult();
         return ResponseResult<StartRegistrationResult>.Success(result, result.Message);
@@ -103,7 +108,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (!updateResult.Succeeded)
             return ResponseResult<CompleteRegistrationResult>.Failure(updateResult.Message ?? "Failed to complete registration.");
 
-        await _eventPublisher.PublishAccountCreatedEventAsync(user.Id.ToString(), user.Email);
+        await _eventPublisher.PublishAccountCreatedEventAsync(new AccountCreatedEvent
+        {
+            UserId = user.Id.ToString(),
+            Email = user.Email
+        });
         var result = user.ToCompleteRegistrationResult();
         return ResponseResult<CompleteRegistrationResult>.Success(result, result.Message);
     }
@@ -166,7 +175,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
 
         var user = userResult.Result;
         // send event to VerificationServiceProvider for code generation and sending
-        await _eventPublisher.PublishVerificationCodeRequestedAsync(user.Id.ToString(), user.Email);
+        await _eventPublisher.PublishVerificationCodeRequestedEventAsync(new VerificationCodeRequestedEvent
+        {
+            UserId = user.Id.ToString(),
+            Email = user.Email
+        });
 
         var response = new GenerateTokenResult
         {
@@ -223,14 +236,20 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ForgotPasswordResult>.Failure(tokenResult.Message ?? "Failed to generate password reset token.");
 
         if (tokenResult.Result != null)
-            await _eventPublisher.PublishPasswordResetRequestedEventAsync(user.Id.ToString(), user.Email, tokenResult.Result);
+        {
+            var evt = new PasswordResetRequestedEvent
+            {
+                UserId = user.Id.ToString(), Email = user.Email, ResetToken = tokenResult.Result
+            };
+            await _eventPublisher.PublishPasswordResetRequestedEventAsync(evt);
+        }
         return ResponseResult<ForgotPasswordResult>.Success(new ForgotPasswordResult { Succeeded = true, Message = "If your email is registered, a password reset link will be sent." });
     }
 
     public async Task<ResponseResult<ResetPasswordResult>> ResetPasswordAsync(ResetPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || 
-            string.IsNullOrWhiteSpace(request.Token) || 
+            string.IsNullOrWhiteSpace(request.ResetToken) || 
             string.IsNullOrWhiteSpace(request.NewPassword))
         {
             return ResponseResult<ResetPasswordResult>.Failure("Email, token, and new password are required.");
@@ -249,7 +268,9 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ResetPasswordResult>.Failure("Password reset failed.");
 
         var user = userResult.Result;
-        var resetResult = await _accountRepository.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        _logger.LogWarning("RESET: Email={Email}, Token={Token}, User={UserEmail}", request.Email, request.ResetToken, user?.Email);
+        var resetResult = await _accountRepository.ResetPasswordAsync(user, request.ResetToken, request.NewPassword);
+        _logger.LogWarning("RESET-RESULT: {Result}", resetResult.Message);
         if (!resetResult.Succeeded)
             return ResponseResult<ResetPasswordResult>.Failure(resetResult.Message ?? "Password reset failed.");
 
@@ -275,7 +296,11 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (!deleteResult.Succeeded)
             return ResponseResult<bool>.Failure(deleteResult.Message ?? "Failed to delete account.");
 
-        await _eventPublisher.PublishAccountDeletedEventAsync(user.Id.ToString(), user.Email);
+        await _eventPublisher.PublishAccountDeletedEventAsync(new AccountDeletedEvent
+        {
+            UserId = user.Id.ToString(),
+            Email = user.Email
+        });
         return ResponseResult<bool>.Success(true);
     }
 }

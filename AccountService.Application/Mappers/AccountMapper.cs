@@ -18,7 +18,8 @@ public static class AccountMapper
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            EmailConfirmed = user.EmailConfirmed
+            EmailConfirmed = user.EmailConfirmed,
+            Role = user.Role
         };
     }
     

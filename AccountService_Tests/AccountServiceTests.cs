@@ -1,3 +1,4 @@
+using AccountService.Contracts.Events;
 using AccountService.Contracts.Requests;
 using AccountService.Contracts.Responses;
 using Application.Interfaces;
@@ -40,7 +41,9 @@ public class AccountServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.NotNull(result.Data);
-        _eventPublisherMock.Verify(e => e.PublishVerificationCodeRequestedAsync(It.IsAny<string>(), email), Times.Once);
+        _eventPublisherMock.Verify(e => e.PublishVerificationCodeRequestedEventAsync(
+                It.Is<VerificationCodeRequestedEvent>(evt => evt.Email == email)), Times.Once
+            );
     }
 
     [Fact]
@@ -58,7 +61,10 @@ public class AccountServiceTests
         Assert.False(result.Succeeded);
         Assert.Equal("Account already exists.", result.Message);
         // Senior: Ensure no event is published for duplicate registration
-        _eventPublisherMock.Verify(e => e.PublishVerificationCodeRequestedAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _eventPublisherMock.Verify(e =>
+                e.PublishVerificationCodeRequestedEventAsync(It.IsAny<VerificationCodeRequestedEvent>()),
+            Times.Never
+        );
     }
 
     [Fact]
@@ -229,7 +235,7 @@ public class AccountServiceTests
     public async Task ResetPasswordAsync_ShouldFail_WithInvalidPassword()
     {
         // Arrange
-        var request = new ResetPasswordRequest { Email = "user@example.com", Token = "valid-token", NewPassword = "weak" };
+        var request = new ResetPasswordRequest { Email = "user@example.com", ResetToken = "valid-token", NewPassword = "weak" };
         var passwordValidationResult = new PasswordValidationResult 
         { 
             Succeeded = false, 
@@ -250,13 +256,13 @@ public class AccountServiceTests
     public async Task ResetPasswordAsync_ShouldSucceed_WithValidPassword()
     {
         // Arrange
-        var request = new ResetPasswordRequest { Email = "user@example.com", Token = "valid-token", NewPassword = "StrongPass123" };
+        var request = new ResetPasswordRequest { Email = "user@example.com", ResetToken = "valid-token", NewPassword = "StrongPass123" };
         var user = new User { Email = request.Email };
         var passwordValidationResult = new PasswordValidationResult { Succeeded = true };
         
         _passwordValidatorMock.Setup(x => x.Validate(request.NewPassword)).Returns(passwordValidationResult);
         _repoMock.Setup(r => r.GetByEmailAsync(request.Email)).ReturnsAsync(new RepositoryResult<User> { Succeeded = true, Result = user });
-        _repoMock.Setup(r => r.ResetPasswordAsync(user, request.Token, request.NewPassword))
+        _repoMock.Setup(r => r.ResetPasswordAsync(user, request.ResetToken, request.NewPassword))
                  .ReturnsAsync(new RepositoryResult<bool> { Succeeded = true, Result = true });
 
         // Act
