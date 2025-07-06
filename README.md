@@ -4,10 +4,13 @@
 AccountServiceProvider is a modular .NET microservice for user account management, registration, email verification, and secure password handling.
 
 ## Features
-- User registration & email verification
-- Secure password reset & credential validation
+- User registration & email verification via event-driven flow
+- Secure password reset & credential validation (configurable policy)
 - Azure Communication Services integration for email delivery
-- **Event-driven architecture:** AccountService publishes semantic events, EmailServiceProvider listens and sends emails
+- **Event-driven architecture:**
+  - AccountService publishes strongly typed semantic events (e.g. `AccountCreatedEvent`, `PasswordResetRequestedEvent`, `VerificationCodeRequestedEvent`)
+  - VerificationService listens, generates codes, and triggers downstream flows
+  - EmailServiceProvider listens and sends emails
 - Centralized email templates in EmailServiceProvider
 - xUnit tests with edge case validation
 
@@ -17,7 +20,7 @@ AccountServiceProvider/
 ├── AccountService.Api/              # HTTP API layer (Azure Functions endpoints)
 ├── AccountService.Infrastructure/   # Data access, messaging, event publishing
 ├── AccountService.Application/      # Business logic, service layer
-├── AccountService.Contracts/        # Request/response & event models (shared contracts)
+├── AccountService.Contracts/        # Request/response & strongly typed event models (shared contracts)
 ├── AccountService_Tests/            # xUnit test project (mocked repo, event publisher)
 ```
 
@@ -36,3 +39,4 @@ AccountServiceProvider/
 | POST   | /accounts/forgot-password                     | Request password reset              |
 | POST   | /accounts/reset-password                      | Reset password                      |
 | POST   | /accounts/{userId}/email-confirmation-token   | Generate new email confirmation code|
+
