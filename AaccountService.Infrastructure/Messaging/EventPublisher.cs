@@ -28,72 +28,44 @@ public class EventPublisher : IEventPublisher, IAsyncDisposable
         _logger = logger;
     }
 
-    public async Task PublishVerificationCodeSentEventAsync(string userId, string? email, string code)
+    public async Task PublishAccountCreatedEventAsync(AccountCreatedEvent evt)
     {
-        var evt = new AccountMessageEvent
-        {
-            EventType = "VerificationCodeSent",
-            UserId = userId,
-            Email = email,
-            Code = code
-        };
-        await PublishEventAsync(evt);
+        var message = JsonConvert.SerializeObject(evt);
+        _logger.LogInformation("Publishing AccountCreatedEvent to account-lifecycle-events queue: {Payload}", message);
+        await _sender.SendMessageAsync(new ServiceBusMessage(message));
+        _logger.LogInformation("Successfully sent AccountCreatedEvent to account-lifecycle-events queue for user {UserId}", evt.UserId);
     }
 
-    public async Task PublishAccountCreatedEventAsync(string userId, string? email)
+    public async Task PublishAccountDeletedEventAsync(AccountDeletedEvent evt)
     {
-        var evt = new AccountMessageEvent
-        {
-            EventType = "AccountCreated",
-            UserId = userId,
-            Email = email
-        };
-        await PublishEventAsync(evt);
+        var message = JsonConvert.SerializeObject(evt);
+        _logger.LogInformation("Publishing AccountDeletedEvent to account-lifecycle-events queue: {Payload}", message);
+        await _sender.SendMessageAsync(new ServiceBusMessage(message));
+        _logger.LogInformation("Successfully sent AccountDeletedEvent to account-lifecycle-events queue for user {UserId}", evt.UserId);
     }
 
-    public async Task PublishPasswordResetRequestedEventAsync(string userId, string? email, string token)
+    public async Task PublishPasswordResetRequestedEventAsync(PasswordResetRequestedEvent evt)
     {
-        var evt = new AccountMessageEvent
-        {
-            EventType = "PasswordResetRequested",
-            UserId = userId,
-            Email = email,
-            Token = token
-        };
-        await PublishEventAsync(evt);
+        var message = JsonConvert.SerializeObject(evt);
+        _logger.LogInformation("Publishing PasswordResetRequestedEvent to account-lifecycle-events queue: {Payload}", message);
+        await _sender.SendMessageAsync(new ServiceBusMessage(message));
+        _logger.LogInformation("Successfully sent PasswordResetRequestedEvent to account-lifecycle-events queue for user {UserId}", evt.UserId);
     }
 
-    public async Task PublishAccountDeletedEventAsync(string userId, string? email)
+    public async Task PublishVerificationCodeRequestedEventAsync(VerificationCodeRequestedEvent evt)
     {
-        var evt = new AccountMessageEvent
-        {
-            EventType = "AccountDeleted",
-            UserId = userId,
-            Email = email
-        };
-        await PublishEventAsync(evt);
-    }
-
-    public async Task PublishVerificationCodeRequestedAsync(string userId, string email)
-    {
-        var evt = new VerificationCodeRequestedEvent
-        {
-            UserId = userId,
-            Email = email
-        };
         var message = JsonConvert.SerializeObject(evt);
         _logger.LogInformation("Publishing VerificationCodeRequestedEvent to verification-code-requests queue: {Payload}", message);
         await _verificationSender.SendMessageAsync(new ServiceBusMessage(message));
-        _logger.LogInformation("Successfully sent VerificationCodeRequestedEvent to verification-code-requests queue for user {UserId}", userId);
+        _logger.LogInformation("Successfully sent VerificationCodeRequestedEvent to verification-code-requests queue for user {UserId}", evt.UserId);
     }
 
-    private async Task PublishEventAsync(AccountMessageEvent evt)
+    public async Task PublishVerificationCodeSentEventAsync(VerificationCodeSentEvent evt)
     {
         var message = JsonConvert.SerializeObject(evt);
-        var serviceBusMessage = new ServiceBusMessage(message);
-        _logger.LogInformation("Publishing {EventType} to account-lifecycle-events queue: {Payload}", evt.EventType, message);
-        await _sender.SendMessageAsync(serviceBusMessage);
-        _logger.LogInformation("Successfully sent {EventType} event to account-lifecycle-events queue for user {UserId}", evt.EventType, evt.UserId);
+        _logger.LogInformation("Publishing VerificationCodeSentEvent to account-lifecycle-events queue: {Payload}", message);
+        await _sender.SendMessageAsync(new ServiceBusMessage(message));
+        _logger.LogInformation("Successfully sent VerificationCodeSentEvent to account-lifecycle-events queue for user {UserId}", evt.UserId);
     }
 
     public async ValueTask DisposeAsync() 

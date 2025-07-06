@@ -7,4 +7,5 @@ public class UserAccountDto
     public string? FirstName { get; set; } 
     public string? LastName { get; set; } 
     public bool EmailConfirmed { get; set; }
+    public string Role { get; set; } = "user";
 }

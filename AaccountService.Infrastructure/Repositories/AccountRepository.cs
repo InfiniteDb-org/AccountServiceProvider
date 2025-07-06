@@ -70,16 +70,21 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
         return RepositoryResult<bool>.Success(true, "Email confirmed");
     }
 
-    public Task<RepositoryResult<string>> GeneratePasswordResetTokenAsync(User user)
+    public async Task<RepositoryResult<string>> GeneratePasswordResetTokenAsync(User user)
     {
         try
         {
             var token = Guid.NewGuid().ToString();
-            return Task.FromResult(RepositoryResult<string>.Success(token, "Password reset token generated"));
+            user.PasswordResetToken = token;
+            user.PasswordResetTokenExpires = DateTime.UtcNow.AddDays(1);
+            _dbContext.Users.Update(user);
+
+            await _dbContext.SaveChangesAsync();
+            return RepositoryResult<string>.Success(token, "Password reset token generated");
         }
         catch (Exception ex)
         {
-            return Task.FromResult(RepositoryResult<string>.Fail(ex.Message));
+            return RepositoryResult<string>.Fail(ex.Message);
         }
     }
 
@@ -87,7 +92,16 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
     {
         try
         {
+            // log all relevant info for debugging
+            Console.WriteLine($"[ResetPasswordAsync] Email: {user.Email}, DB-Token: {user.PasswordResetToken}, DB-Expires: {user.PasswordResetTokenExpires}, Request-Token: {token}, Now: {DateTime.UtcNow}");
+            if (user.PasswordResetToken != token ||
+                user.PasswordResetTokenExpires == null ||
+                user.PasswordResetTokenExpires < DateTime.UtcNow)
+                return RepositoryResult<bool>.Fail("Invalid password reset token");
+            
             user.PasswordHash = await Task.Run(() => HashPassword(newPassword));
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpires = null;
             user.UpdatedAt = DateTime.UtcNow;
             _dbContext.Users.Update(user);
             await _dbContext.SaveChangesAsync();
