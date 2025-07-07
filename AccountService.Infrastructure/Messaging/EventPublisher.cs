@@ -7,12 +7,14 @@ using Newtonsoft.Json;
 
 namespace Infrastructure.Messaging;
 
+// Publishes domain events to Azure Service Bus queues
 public class EventPublisher : IEventPublisher, IAsyncDisposable
 {
     private readonly ServiceBusSender _sender;
     private readonly ServiceBusSender _verificationSender;
     private readonly ILogger<EventPublisher> _logger;
 
+    // Initializes Service Bus senders for account and verification events
     public EventPublisher(ServiceBusClient serviceBusClient, ILogger<EventPublisher> logger, IConfiguration config)
     {
         var accountEventsQueue = config["ASB_AccountEventsQueue"];

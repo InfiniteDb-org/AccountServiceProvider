@@ -94,24 +94,24 @@ public class AccountRepository(AppDbContext dbContext, ILogger<AccountRepository
     {
         try
         {
-            _logger.LogWarning("[ResetPasswordAsync] Email={Email}, Request-Token={RequestToken}, DB-Token={DbToken}, DB-Expires={DbExpires}, Now={Now}",
-                user.Email, token, user.PasswordResetToken, user.PasswordResetTokenExpires, DateTime.UtcNow);
+            /*_logger.LogWarning("[ResetPasswordAsync] Email={Email}, Request-Token={RequestToken}, DB-Token={DbToken}, DB-Expires={DbExpires}, Now={Now}",
+                user.Email, token, user.PasswordResetToken, user.PasswordResetTokenExpires, DateTime.UtcNow);*/
 
             if (user.PasswordResetToken != token ||
                 user.PasswordResetTokenExpires == null ||
                 user.PasswordResetTokenExpires < DateTime.UtcNow)
             {
-                _logger.LogWarning("[ResetPasswordAsync] Token validation failed!");
+                /*_logger.LogWarning("[ResetPasswordAsync] Token validation failed!");*/
                 return RepositoryResult<bool>.Fail("Invalid password reset token");
             }
             
+            // Reset password and clear token
             user.PasswordHash = await Task.Run(() => HashPassword(newPassword));
             user.PasswordResetToken = null;
             user.PasswordResetTokenExpires = null;
             user.UpdatedAt = DateTime.UtcNow;
             _dbContext.Users.Update(user);
             await _dbContext.SaveChangesAsync();
-            _logger.LogWarning("[ResetPasswordAsync] Password reset successful!");
             return RepositoryResult<bool>.Success(true, "Password reset successful");
         }
         catch (Exception ex)

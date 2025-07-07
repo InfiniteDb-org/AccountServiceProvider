@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AccountService.Api.Helpers;
 
-// Helper class for creating standardized IActionResult responses from ResponseResult objects
+// centralizes mapping of domain result to HTTP response for consistency
 public static class ActionResultHelper
 {
-    // Helper methods for creating standardized responses
+    // helpers to ensure all responses are shaped the same way
     private static OkObjectResult Ok<T>(ResponseResult<T> result) => new(result);
     private static OkObjectResult Ok(ResponseResult result) => new(result);
     public static BadRequestObjectResult BadRequest(string? message) => new(new SimpleResponseResult { Succeeded = false, Message = message });
@@ -14,8 +14,7 @@ public static class ActionResultHelper
     private static ConflictObjectResult Conflict(string? message) => new(new SimpleResponseResult { Succeeded = false, Message = message });
     private static UnauthorizedObjectResult Unauthorized(string? message) => new(new SimpleResponseResult { Succeeded = false, Message = message });
     
-    
-    // Creates an appropriate IActionResult based on the ResponseResult status and message content
+    // Returns HTTP status based on domain error semantics, not just success/failure
     public static IActionResult CreateResponse<T>(ResponseResult<T> result)
     {
         if (result.Succeeded)
@@ -23,7 +22,6 @@ public static class ActionResultHelper
             return Ok(result);
         }
         
-        // Map error messages to appropriate status codes
         var message = result.Message?.ToLowerInvariant();
         
         if (message?.Contains("not found") == true)
@@ -38,8 +36,7 @@ public static class ActionResultHelper
         return BadRequest(result.Message);
     }
     
-    
-    // Creates an appropriate IActionResult based on the ResponseResult status and message content
+    // Same as above, for non-generic ResponseResult
     public static IActionResult CreateResponse(ResponseResult result)
     {
         if (result.Succeeded)
@@ -47,7 +44,6 @@ public static class ActionResultHelper
             return Ok(result);
         }
         
-        // Map error messages to appropriate status codes
         var message = result.Message?.ToLowerInvariant();
         
         if (message?.Contains("not found") == true)

@@ -13,11 +13,15 @@
         <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.1" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.2" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.6">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         
     </ItemGroup>
     <ItemGroup>
-      <ProjectReference Include="..\AaccountService.Infrastructure\AaccountService.Infrastructure.csproj" />
+      <ProjectReference Include="..\AccountService.Infrastructure\AccountService.Infrastructure.csproj" />
       <ProjectReference Include="..\AccountService.Application\AccountService.Application.csproj" />
       <ProjectReference Include="..\AccountService.Contracts\AccountService.Contracts.csproj" />
     </ItemGroup>

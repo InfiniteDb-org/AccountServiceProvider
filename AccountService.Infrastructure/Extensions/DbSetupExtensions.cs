@@ -3,7 +3,7 @@ using Infrastructure.Contexts;
 
 namespace Infrastructure.Extensions;
 
-// Auto-creates Cosmos DB containers on startup
+// auto-creating Cosmos DB containers in dev/staging environments
 public static class DbSetupExtensions
 {
     public static async Task EnsureCosmosContainersCreatedAsync(this IServiceProvider services, string? environmentName)

@@ -20,7 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AaccountService.Infrastructure\AaccountService.Infrastructure.csproj" />
+      <ProjectReference Include="..\AccountService.Infrastructure\AccountService.Infrastructure.csproj" />
       <ProjectReference Include="..\AccountService.Api\AccountService.Api.csproj" />
       <ProjectReference Include="..\AccountService.Application\AccountService.Application.csproj" />
       <ProjectReference Include="..\AccountService.Contracts\AccountService.Contracts.csproj" />

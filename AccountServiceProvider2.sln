@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccountService.Api", "Accou
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccountService.Application", "AccountService.Application\AccountService.Application.csproj", "{57D79EA3-7F2D-4FC1-B1B5-E66A5D5983A1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AaccountService.Infrastructure", "AaccountService.Infrastructure\AaccountService.Infrastructure.csproj", "{1F2853C9-0573-4B4E-AE15-424E2823A328}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccountService.Infrastructure", "AccountService.Infrastructure\AccountService.Infrastructure.csproj", "{1F2853C9-0573-4B4E-AE15-424E2823A328}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccountService.Contracts", "AccountService.Contracts\AccountService.Contracts.csproj", "{BD562875-EB26-4CCF-9D18-40BD32D0BA11}"
 EndProject

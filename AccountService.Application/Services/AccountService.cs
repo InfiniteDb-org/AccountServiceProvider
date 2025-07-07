@@ -46,7 +46,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (!createResult.Succeeded || createResult.Result == null)
             return ResponseResult<StartRegistrationResult>.Failure(createResult.Message ?? "Failed to create user.");
         
-        // send event to VerificationServiceProvider for code generation and sending
+        // trigger email verification code generation
         await _eventPublisher.PublishVerificationCodeRequestedEventAsync(new VerificationCodeRequestedEvent
         {
             UserId = user.Id.ToString(),
@@ -72,7 +72,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         var isValid = await _emailVerificationProvider.VerifyCodeAsync(request.Email, request.Code);
         if (!isValid)
             return ResponseResult<ConfirmEmailCodeResult>.Failure("Invalid verification code.");
-
+        
         var confirmResult = await _accountRepository.ConfirmEmailAsync(userResult.Result, request.Code);
         if (!confirmResult.Succeeded)
             return ResponseResult<ConfirmEmailCodeResult>.Failure(confirmResult.Message ?? "Failed to confirm email.");
@@ -86,7 +86,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return ResponseResult<CompleteRegistrationResult>.Failure("Email and password are required.");
 
-        // Validate password requirements
+        // validate password policy
         var passwordValidation = _passwordValidator.Validate(request.Password);
         if (!passwordValidation.Succeeded)
             return ResponseResult<CompleteRegistrationResult>.Failure(passwordValidation.Message!);
@@ -99,15 +99,18 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<CompleteRegistrationResult>.Failure("User not found.");
 
         var user = userResult.Result;
+        // ensure email is confirmed before registration can be completed
         if (!user.EmailConfirmed)
             return ResponseResult<CompleteRegistrationResult>.Failure("Email not confirmed.");
 
+        // set password and update user
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         user.UpdatedAt = DateTime.UtcNow;
         var updateResult = await _accountRepository.UpdateAsync(user);
         if (!updateResult.Succeeded)
             return ResponseResult<CompleteRegistrationResult>.Failure(updateResult.Message ?? "Failed to complete registration.");
 
+        // publish account created event
         await _eventPublisher.PublishAccountCreatedEventAsync(new AccountCreatedEvent
         {
             UserId = user.Id.ToString(),
@@ -130,6 +133,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ValidateCredentialsResult>.Failure("Invalid credentials.");
 
         var user = userResult.Result;
+        // verify password
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return ResponseResult<ValidateCredentialsResult>.Failure("Invalid credentials.");
 
@@ -174,18 +178,14 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<GenerateTokenResult>.Failure("User not found.");
 
         var user = userResult.Result;
-        // send event to VerificationServiceProvider for code generation and sending
+        // trigger email verification code generation
         await _eventPublisher.PublishVerificationCodeRequestedEventAsync(new VerificationCodeRequestedEvent
         {
             UserId = user.Id.ToString(),
             Email = user.Email
         });
 
-        var response = new GenerateTokenResult
-        {
-            Succeeded = true,
-            Message = "New email confirmation code requested."
-        };
+        var response = new GenerateTokenResult { Succeeded = true, Message = "New email confirmation code requested." };
         return ResponseResult<GenerateTokenResult>.Success(response);
     }
 
@@ -202,16 +202,17 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<UpdateUserResult>.Failure("User not found.");
 
         var user = userResult.Result;
+        // update user fields if provided
         if (request.FirstName != null) user.FirstName = request.FirstName;
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.Email != null) user.Email = request.Email;
         if (request.EmailConfirmed.HasValue) user.EmailConfirmed = request.EmailConfirmed.Value;
         user.UpdatedAt = DateTime.UtcNow;
 
+        // save changes
         var updateResult = await _accountRepository.UpdateAsync(user);
         if (!updateResult.Succeeded)
             return ResponseResult<UpdateUserResult>.Failure(updateResult.Message ?? "Failed to update user.");
-
         return ResponseResult<UpdateUserResult>.Success(user.ToUpdateUserResult());
     }
 
@@ -224,30 +225,38 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
         if (!userResult.Succeeded)
             return ResponseResult<ForgotPasswordResult>.Failure(userResult.Message ?? "Failed to retrieve user.");
 
+        // always return success to avoid revealing user existence or confirmation status
         if (userResult.Result is not { EmailConfirmed: true })
         {
-            // Don't reveal that the user does not exist or is not confirmed
-            return ResponseResult<ForgotPasswordResult>.Success(new ForgotPasswordResult { Succeeded = true, Message = "If your email is registered, a password reset link will be sent." });
+            return ResponseResult<ForgotPasswordResult>.Success(
+                new ForgotPasswordResult { Succeeded = true, Message = "If your email is registered, a password reset link will be sent." });
         }
 
         var user = userResult.Result;
+        // generate password reset token
         var tokenResult = await _accountRepository.GeneratePasswordResetTokenAsync(user);
         if (!tokenResult.Succeeded)
             return ResponseResult<ForgotPasswordResult>.Failure(tokenResult.Message ?? "Failed to generate password reset token.");
 
         if (tokenResult.Result != null)
         {
+            // trigger password reset event
             var evt = new PasswordResetRequestedEvent
             {
                 UserId = user.Id.ToString(), Email = user.Email, ResetToken = tokenResult.Result
             };
             await _eventPublisher.PublishPasswordResetRequestedEventAsync(evt);
         }
-        return ResponseResult<ForgotPasswordResult>.Success(new ForgotPasswordResult { Succeeded = true, Message = "If your email is registered, a password reset link will be sent." });
+        // always return generic success message
+        return ResponseResult<ForgotPasswordResult>.Success(
+            new ForgotPasswordResult { Succeeded = true, Message = "If your email is registered, a password reset link will be sent." });
     }
 
     public async Task<ResponseResult<ResetPasswordResult>> ResetPasswordAsync(ResetPasswordRequest request)
     {
+        _logger.LogWarning("[ResetPassword] API called with Email={Email}, Token={Token}, NewPassword={NewPassword}",
+            request.Email, request.ResetToken, request.NewPassword);
+
         if (string.IsNullOrWhiteSpace(request.Email) || 
             string.IsNullOrWhiteSpace(request.ResetToken) || 
             string.IsNullOrWhiteSpace(request.NewPassword))
@@ -255,7 +264,7 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ResetPasswordResult>.Failure("Email, token, and new password are required.");
         }
 
-        // Validate new password requirements
+        // Validate new password policy
         var passwordValidation = _passwordValidator.Validate(request.NewPassword);
         if (!passwordValidation.Succeeded)
             return ResponseResult<ResetPasswordResult>.Failure(passwordValidation.Message!);
@@ -268,17 +277,14 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<ResetPasswordResult>.Failure("Password reset failed.");
 
         var user = userResult.Result;
-        _logger.LogWarning("RESET: Email={Email}, Token={Token}, User={UserEmail}", request.Email, request.ResetToken, user?.Email);
+        /*_logger.LogWarning("RESET: Email={Email}, Token={Token}, User={UserEmail}", request.Email, request.ResetToken, user?.Email);*/
+        // attempt password reset
         var resetResult = await _accountRepository.ResetPasswordAsync(user, request.ResetToken, request.NewPassword);
-        _logger.LogWarning("RESET-RESULT: {Result}", resetResult.Message);
+        /*_logger.LogWarning("RESET-RESULT: {Result}", resetResult.Message);*/
         if (!resetResult.Succeeded)
             return ResponseResult<ResetPasswordResult>.Failure(resetResult.Message ?? "Password reset failed.");
-
-        var resetResponse = new ResetPasswordResult
-        {
-            Succeeded = true,
-            Message = "Password has been reset successfully."
-        };
+        
+        var resetResponse = new ResetPasswordResult {Succeeded = true, Message = "Password has been reset successfully." };
         return ResponseResult<ResetPasswordResult>.Success(resetResponse);
     }
 
@@ -292,15 +298,13 @@ public class AccountService(IAccountRepository accountRepository, IEventPublishe
             return ResponseResult<bool>.Failure("User not found.");
 
         var user = userResult.Result;
+        // delete user account
         var deleteResult = await _accountRepository.DeleteAsync(user.Id);
         if (!deleteResult.Succeeded)
             return ResponseResult<bool>.Failure(deleteResult.Message ?? "Failed to delete account.");
-
-        await _eventPublisher.PublishAccountDeletedEventAsync(new AccountDeletedEvent
-        {
-            UserId = user.Id.ToString(),
-            Email = user.Email
-        });
+        
+        // trigger account deleted event
+        await _eventPublisher.PublishAccountDeletedEventAsync(new AccountDeletedEvent {UserId = user.Id.ToString(), Email = user.Email });
         return ResponseResult<bool>.Success(true);
     }
 }

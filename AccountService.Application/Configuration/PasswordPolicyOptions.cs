@@ -1,5 +1,6 @@
 namespace Application.Configuration;
 
+// configure password policy from configuration (appsettings.json)
 public class PasswordPolicyOptions
 {
     public const string SectionName = "PasswordPolicy";

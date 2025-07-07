@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Extensions;
 
+// registers DbContext and repositories based on configuration (Cosmos DB or SQL Server)
+
 public static class RepositoryRegistrationExtension
 {
     public static IServiceCollection AddRepositories(this IServiceCollection services, IConfiguration configuration)

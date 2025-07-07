@@ -22,7 +22,7 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
             var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<StartRegistrationRequest>(req, _logger);
             if (!requestResult.Succeeded)
                 return ActionResultHelper.CreateResponse(requestResult);
-
+            
             var response = await _accountService.StartRegistrationAsync(requestResult.Data!);
             return ActionResultHelper.CreateResponse(response);
         }
@@ -42,7 +42,7 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
             var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<ConfirmEmailCodeRequest>(req, _logger);
             if (!requestResult.Succeeded)
                 return ActionResultHelper.CreateResponse(requestResult);
-
+            
             var response = await _accountService.ConfirmEmailCodeAsync(requestResult.Data!);
             return ActionResultHelper.CreateResponse(response);
         }
@@ -62,7 +62,7 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
             var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<CompleteRegistrationRequest>(req, _logger);
             if (!requestResult.Succeeded)
                 return ActionResultHelper.CreateResponse(requestResult);
-
+            
             var response = await _accountService.CompleteRegistrationAsync(requestResult.Data!);
             return ActionResultHelper.CreateResponse(response);
         }
@@ -84,7 +84,7 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
             {
                 return ActionResultHelper.CreateResponse(requestResult);
             }
-
+            
             var response = await _accountService.ValidateCredentialsAsync(requestResult.Data!);
             return ActionResultHelper.CreateResponse(response);
         }
@@ -158,7 +158,7 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
             {
                 return ActionResultHelper.CreateResponse(requestResult);
             }
-
+            
             var response = await _accountService.UpdateUserAsync(userId, requestResult.Data!);
             return ActionResultHelper.CreateResponse(response);
         }
@@ -180,11 +180,8 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
             {
                 return ActionResultHelper.CreateResponse(requestResult);
             }
-
-            var response = await _accountService.ForgotPasswordAsync(requestResult.Data!);
             
-            // Always return success for security reasons, even if there's an error
-            // This prevents user enumeration attacks
+            var response = await _accountService.ForgotPasswordAsync(requestResult.Data!);
             return ActionResultHelper.CreateResponse(response);
         }
         catch (Exception ex)
@@ -198,19 +195,20 @@ public class AccountFunctions(ILogger<AccountFunctions> logger, IAccountService 
     public async Task<IActionResult> ResetPassword(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "accounts/reset-password")] HttpRequest req)
     {
+        // Log request body for debugging hard-to-trace issues
+        var body = await new StreamReader(req.Body).ReadToEndAsync();
+        _logger.LogWarning("AccountService [ResetPassword] Incoming requestBody: {Body}", body);
+        req.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(body));
         try
         {
             var requestResult = await RequestBodyHelper.ReadAndValidateRequestBody<ResetPasswordRequest>(req, _logger);
             if (!requestResult.Succeeded)
-            {
                 return ActionResultHelper.CreateResponse(requestResult);
-            }
-
+            
             var response = await _accountService.ResetPasswordAsync(requestResult.Data!);
             
             if (!response.Succeeded)
             {
-                // For security reasons, don't reveal too much information
                 return ActionResultHelper.BadRequest("Password reset failed.");
             }
 
