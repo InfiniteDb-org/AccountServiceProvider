@@ -3,13 +3,15 @@ using Application.Interfaces;
 using Application.Models;
 using Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using static BCrypt.Net.BCrypt;
 
 namespace Infrastructure.Repositories;
 
-public class AccountRepository(AppDbContext dbContext) : IAccountRepository
+public class AccountRepository(AppDbContext dbContext, ILogger<AccountRepository> logger) : IAccountRepository
 {
     private readonly AppDbContext _dbContext = dbContext;
+    private readonly ILogger<AccountRepository> _logger = logger;
 
     public async Task<RepositoryResult<User>> CreateAsync(User user, string password)
     {
@@ -92,12 +94,16 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
     {
         try
         {
-            // log all relevant info for debugging
-            Console.WriteLine($"[ResetPasswordAsync] Email: {user.Email}, DB-Token: {user.PasswordResetToken}, DB-Expires: {user.PasswordResetTokenExpires}, Request-Token: {token}, Now: {DateTime.UtcNow}");
+            _logger.LogWarning("[ResetPasswordAsync] Email={Email}, Request-Token={RequestToken}, DB-Token={DbToken}, DB-Expires={DbExpires}, Now={Now}",
+                user.Email, token, user.PasswordResetToken, user.PasswordResetTokenExpires, DateTime.UtcNow);
+
             if (user.PasswordResetToken != token ||
                 user.PasswordResetTokenExpires == null ||
                 user.PasswordResetTokenExpires < DateTime.UtcNow)
+            {
+                _logger.LogWarning("[ResetPasswordAsync] Token validation failed!");
                 return RepositoryResult<bool>.Fail("Invalid password reset token");
+            }
             
             user.PasswordHash = await Task.Run(() => HashPassword(newPassword));
             user.PasswordResetToken = null;
@@ -105,10 +111,12 @@ public class AccountRepository(AppDbContext dbContext) : IAccountRepository
             user.UpdatedAt = DateTime.UtcNow;
             _dbContext.Users.Update(user);
             await _dbContext.SaveChangesAsync();
+            _logger.LogWarning("[ResetPasswordAsync] Password reset successful!");
             return RepositoryResult<bool>.Success(true, "Password reset successful");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[ResetPasswordAsync] Exception: {Message}", ex.Message);
             return RepositoryResult<bool>.Fail(ex.Message);
         }
     }
